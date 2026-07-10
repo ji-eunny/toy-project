@@ -214,8 +214,8 @@ const generateAdoptability = (): string => {
  * 지역별 유기동물 조회 (보호시설 → 동물 정보 두 단계 API 호출)
  */
 export const fetchPets = async (
-  pageNo: number = 1,
-  pageSize: number = 10,
+  _pageNo: number = 1,
+  _pageSize: number = 10,
   region?: string
 ): Promise<Pet[]> => {
   try {

@@ -1,8 +1,22 @@
 import { Pet } from '../types/pet'
 
+const defaultFields = {
+  images: [],
+  status: '보호중',
+  color: '미상',
+  weight: '미상',
+  neutered: '미상',
+  noticeStartDate: '2026-07-01',
+  noticeEndDate: '2026-07-31',
+  discoveryLocation: '미상',
+  specialFeatures: '',
+  particularMatters: '',
+}
+
 export const mockPets: Pet[] = [
   // 수원시
   {
+    ...defaultFields,
     id: '1',
     name: '뽀삐',
     breed: '믹스견',
@@ -19,6 +33,7 @@ export const mockPets: Pet[] = [
     noticeNo: 'GG001',
   },
   {
+    ...defaultFields,
     id: '2',
     name: '해피',
     breed: '시바견',
@@ -36,6 +51,7 @@ export const mockPets: Pet[] = [
   },
   // 성남시
   {
+    ...defaultFields,
     id: '3',
     name: '루나',
     breed: '골든 리트리버',
@@ -52,6 +68,7 @@ export const mockPets: Pet[] = [
     noticeNo: 'GG003',
   },
   {
+    ...defaultFields,
     id: '4',
     name: '초코',
     breed: '포메라니안',
@@ -69,6 +86,7 @@ export const mockPets: Pet[] = [
   },
   // 고양시
   {
+    ...defaultFields,
     id: '5',
     name: '맥스',
     breed: '래브라도',
@@ -85,6 +103,7 @@ export const mockPets: Pet[] = [
     noticeNo: 'GG005',
   },
   {
+    ...defaultFields,
     id: '6',
     name: '뭉치',
     breed: '웰시 코기',
@@ -102,6 +121,7 @@ export const mockPets: Pet[] = [
   },
   // 용인시
   {
+    ...defaultFields,
     id: '7',
     name: '벨라',
     breed: '진돗개',
@@ -118,6 +138,7 @@ export const mockPets: Pet[] = [
     noticeNo: 'GG007',
   },
   {
+    ...defaultFields,
     id: '8',
     name: '보보',
     breed: '비숑 프리제',
@@ -135,6 +156,7 @@ export const mockPets: Pet[] = [
   },
   // 평택시
   {
+    ...defaultFields,
     id: '9',
     name: '꼬미',
     breed: '믹스견',
