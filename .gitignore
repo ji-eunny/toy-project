@@ -1,0 +1,15 @@
+# 의존성
+node_modules/
+dist/
+
+# 환경변수
+.env.local
+.env*.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
