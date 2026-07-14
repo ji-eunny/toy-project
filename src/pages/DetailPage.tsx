@@ -33,6 +33,7 @@ const DetailPage = () => {
   const [aiAnalysis, setAiAnalysis] = useState<string>('')
   const [loadingAI, setLoadingAI] = useState(false)
   const [aiError, setAiError] = useState<string>('')
+  const [copyToast, setCopyToast] = useState(false)
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -77,6 +78,26 @@ const DetailPage = () => {
 
     loadPet()
   }, [id])
+
+  const handleShare = async () => {
+    const url = window.location.href
+    const title = pet ? `${pet.breed} - 입양을 기다리고 있어요!` : 'Petmily'
+    const text = pet
+      ? `${pet.breed} (${pet.age}, ${pet.gender}) | ${pet.shelterName}`
+      : ''
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url })
+      } catch {
+        // 사용자가 취소한 경우 무시
+      }
+    } else {
+      await navigator.clipboard.writeText(url)
+      setCopyToast(true)
+      setTimeout(() => setCopyToast(false), 2000)
+    }
+  }
 
   const handleAnalyzeClick = async () => {
     if (!pet) return
@@ -123,6 +144,15 @@ const DetailPage = () => {
     <div className="min-h-screen flex flex-col">
       <Header />
 
+      {/* 링크 복사 토스트 */}
+      <div
+        className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-gray-800 text-white text-sm font-semibold rounded-full shadow-lg transition-all duration-300 ${
+          copyToast ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+      >
+        링크가 복사되었습니다!
+      </div>
+
       <main className="flex-1 px-6 pc:py-12 py-4">
         <div className="max-w-4xl mx-auto">
           {/* 헤더 */}
@@ -154,7 +184,10 @@ const DetailPage = () => {
                   <MdFavoriteBorder className="text-2xl text-dark" />
                 )}
               </button>
-              <button className="p-3 hover:bg-gray-100 rounded-full transition">
+              <button
+                onClick={handleShare}
+                className="p-3 hover:bg-gray-100 rounded-full transition"
+              >
                 <MdShare className="text-2xl text-dark" />
               </button>
             </div>
