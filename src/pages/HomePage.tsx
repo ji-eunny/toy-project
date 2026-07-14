@@ -4,7 +4,7 @@ import PetCard from '../components/PetCard'
 import Header from '../components/Header'
 import RegionSelector from '../components/RegionSelector'
 import StatusSelect from '../components/StatusSelect'
-import { fetchPets } from '../services/petService'
+import { fetchPets, fetchPetsStream } from '../services/petService'
 import { Pet } from '../types/pet'
 import { getFromCache, setToCache } from '../utils/petCache'
 
@@ -20,8 +20,13 @@ const HomePage = () => {
     (searchParams.get('status') as 'all' | 'protected' | 'ended') || 'all'
   )
   const [loading, setLoading] = useState(true)
-  const isInitialLoad = useRef(true)
+  const [isStreaming, setIsStreaming] = useState(false)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const statusFilterRef = useRef(statusFilter)
+  const displayCountRef = useRef(displayCount)
+
+  useEffect(() => { statusFilterRef.current = statusFilter }, [statusFilter])
+  useEffect(() => { displayCountRef.current = displayCount }, [displayCount])
 
   // URL QueryString 변경 감지
   useEffect(() => {
@@ -36,37 +41,53 @@ const HomePage = () => {
     }
   }, [searchParams])
 
-  // 지역 변경 시 데이터 로드 (캐시 우선, 만료 시 재요청)
+  // 지역 변경 시 데이터 로드
   useEffect(() => {
-    // 이전 요청 취소
     abortControllerRef.current?.abort()
     abortControllerRef.current = new AbortController()
-    const isCancelled = () => abortControllerRef.current?.signal.aborted
+    const { signal } = abortControllerRef.current
 
     const loadPets = async () => {
       setLoading(true)
+      setIsStreaming(false)
       setDisplayCount(20)
 
-      // 캐시 확인 (지역별 + 만료 시간 30분 적용)
+      // 캐시 확인 (지역별 + 만료 시간 30분)
       const cached = getFromCache(selectedRegion)
       if (cached) {
-        if (isCancelled()) return
+        if (signal.aborted) return
         setAllPets(cached)
-        setPets(getFilteredPets(cached, statusFilter).slice(0, 20))
+        setPets(getFilteredPets(cached, statusFilterRef.current).slice(0, 20))
         setLoading(false)
-        isInitialLoad.current = false
         return
       }
 
-      // 캐시 없으면 API 요청
-      const data = await fetchPets(1, 20, selectedRegion)
-      if (isCancelled()) return
+      // 전체 조회: 스트리밍 방식 (배치마다 즉시 화면 표시)
+      if (!selectedRegion) {
+        setLoading(false)
+        setIsStreaming(true)
+
+        const finalData = await fetchPetsStream((batchedPets) => {
+          if (signal.aborted) return
+          setAllPets(batchedPets)
+          setPets(getFilteredPets(batchedPets, statusFilterRef.current).slice(0, displayCountRef.current))
+        }, signal)
+
+        if (!signal.aborted) {
+          setIsStreaming(false)
+          setToCache(finalData, undefined)
+        }
+        return
+      }
+
+      // 특정 지역: 기존 방식
+      const data = await fetchPets(1, 300, selectedRegion)
+      if (signal.aborted) return
 
       setToCache(data, selectedRegion)
       setAllPets(data)
-      setPets(getFilteredPets(data, statusFilter).slice(0, 20))
+      setPets(getFilteredPets(data, statusFilterRef.current).slice(0, 20))
       setLoading(false)
-      isInitialLoad.current = false
     }
 
     loadPets()
@@ -124,7 +145,7 @@ const HomePage = () => {
             <StatusSelect value={statusFilter} onChange={handleStatusFilter} />
           </div>
 
-          {/* 로딩 상태 */}
+          {/* 초기 로딩 (지역 선택 시) */}
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <div className="text-center">
@@ -132,12 +153,20 @@ const HomePage = () => {
                 <p className="text-gray-600">유기동물 정보를 불러오는 중...</p>
               </div>
             </div>
-          ) : pets.length === 0 ? (
+          ) : pets.length === 0 && !isStreaming ? (
             <div className="text-center py-20">
               <p className="text-gray-600 text-lg">해당 지역의 유기동물 정보가 없습니다.</p>
             </div>
           ) : (
             <div className="w-full">
+              {/* 스트리밍 진행 배너 */}
+              {isStreaming && (
+                <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary shrink-0"></div>
+                  <span>전체 지역 불러오는 중... ({allPets.length}마리)</span>
+                </div>
+              )}
+
               {/* 동물 카드 그리드 */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
                 {pets.map((pet) => (
@@ -148,7 +177,7 @@ const HomePage = () => {
               </div>
 
               {/* 더보기 버튼 */}
-              {pets.length > 0 && displayCount < getFilteredPets(allPets, statusFilter).length && (
+              {pets.length > 0 && !isStreaming && displayCount < getFilteredPets(allPets, statusFilter).length && (
                 <div className="flex justify-center mt-4 mb-8">
                   <button
                     onClick={handleLoadMore}

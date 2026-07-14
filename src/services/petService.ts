@@ -276,6 +276,56 @@ export const fetchPetsByRegion = async (region: string): Promise<Pet[]> => {
 }
 
 /**
+ * 전체 유기동물 스트리밍 조회
+ * 배치가 완료될 때마다 onBatch 콜백 호출 → 결과를 즉시 화면에 표시 가능
+ */
+export const fetchPetsStream = async (
+  onBatch: (pets: Pet[]) => void,
+  signal?: AbortSignal
+): Promise<Pet[]> => {
+  try {
+    const shelters = await fetchShelters()
+    if (shelters.length === 0) return []
+
+    if (signal?.aborted) return []
+
+    const shelterMap = new Map<string, any>()
+    for (const shelter of shelters) {
+      shelterMap.set(shelter.SIGUN_CD, shelter)
+    }
+
+    const entries = Array.from(shelterMap.entries())
+    const CONCURRENCY = 8
+    const chunks = chunkArray(entries, CONCURRENCY)
+    let allAnimals: Pet[] = []
+
+    for (const chunk of chunks) {
+      if (signal?.aborted) break
+
+      const results = await Promise.allSettled(
+        chunk.map(([sigunCd, shelterInfo]) => fetchAnimalsByRegion(sigunCd, shelterInfo))
+      )
+
+      const batchPets: Pet[] = []
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          batchPets.push(...result.value)
+        }
+      }
+
+      if (batchPets.length > 0 && !signal?.aborted) {
+        allAnimals = allAnimals.concat(batchPets)
+        onBatch([...allAnimals])
+      }
+    }
+
+    return allAnimals
+  } catch {
+    return []
+  }
+}
+
+/**
  * 지역 목록 조회
  */
 export const getRegions = (): string[] => {
