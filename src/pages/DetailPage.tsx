@@ -364,7 +364,7 @@ const DetailPage = () => {
             </div>
 
             {/* 성격 - AI 분석 */}
-            <div className="bg-gray-50 rounded-2xl md:p-6 p-4 mb-8">
+            <div className="bg-white border border-gray-200 shadow-sm md:bg-gray-50 md:border-0 md:shadow-none rounded-2xl md:p-6 p-4 mb-8">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-dark">성격</h3>
                 <button
@@ -406,7 +406,7 @@ const DetailPage = () => {
             </div>
 
             {/* 보호소 정보 */}
-            <div className="bg-gray-50 rounded-2xl md:p-6 p-4 mb-8">
+            <div className="bg-white border border-gray-200 shadow-sm md:bg-gray-50 md:border-0 md:shadow-none rounded-2xl md:p-6 p-4 mb-8">
               <h3 className="text-lg font-bold text-dark mb-4">보호소 정보</h3>
               <div className="space-y-3">
                 <div>
