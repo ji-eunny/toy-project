@@ -15,7 +15,16 @@ const PetCard = ({ pet, onDelete }: PetCardProps) => {
 
   return (
     <div
-      onClick={() => pet.status === '보호중' && navigate(`/pet/${pet.id}`)}
+      onClick={() => {
+        if (pet.status !== '보호중') return
+        // 클릭 시 개별 캐시 저장 → DetailPage 즉시 로드 보장
+        try {
+          localStorage.setItem(`pet_cache_${pet.id}`, JSON.stringify(pet))
+        } catch {
+          // localStorage 용량 초과 시 무시
+        }
+        navigate(`/pet/${pet.id}`)
+      }}
       className={`bg-white rounded-2xl overflow-hidden w-full h-full flex flex-col border border-gray-100 ${
         pet.status === '보호중'
           ? 'cursor-pointer transition-all duration-300'

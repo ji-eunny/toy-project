@@ -6,6 +6,7 @@ import RegionSelector from '../components/RegionSelector'
 import StatusSelect from '../components/StatusSelect'
 import { fetchPets } from '../services/petService'
 import { Pet } from '../types/pet'
+import { getFromCache, setToCache } from '../utils/petCache'
 
 const HomePage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -20,6 +21,7 @@ const HomePage = () => {
   )
   const [loading, setLoading] = useState(true)
   const isInitialLoad = useRef(true)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   // URL QueryString 변경 감지
   useEffect(() => {
@@ -34,36 +36,35 @@ const HomePage = () => {
     }
   }, [searchParams])
 
-  // 지역 변경 시만 데이터 다시 로드 (초기 로드는 무조건, 이후는 의도적 변경만)
+  // 지역 변경 시 데이터 로드 (캐시 우선, 만료 시 재요청)
   useEffect(() => {
+    // 이전 요청 취소
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = new AbortController()
+    const isCancelled = () => abortControllerRef.current?.signal.aborted
+
     const loadPets = async () => {
       setLoading(true)
       setDisplayCount(20)
 
-      let data: Pet[]
-      if (selectedRegion) {
-        // 지역 선택 시 API 요청
-        data = await fetchPets(1, 20, selectedRegion)
-      } else {
-        // 지역 선택 없을 때
-        if (isInitialLoad.current) {
-          // 초기 로드만 API 요청
-          data = await fetchPets(1, 20)
-          localStorage.setItem('allPets', JSON.stringify(data))
-        } else {
-          // 그 이후는 캐시 사용
-          const cached = localStorage.getItem('allPets')
-          data = cached ? JSON.parse(cached) : await fetchPets(1, 20)
-          if (!cached) {
-            localStorage.setItem('allPets', JSON.stringify(data))
-          }
-        }
+      // 캐시 확인 (지역별 + 만료 시간 30분 적용)
+      const cached = getFromCache(selectedRegion)
+      if (cached) {
+        if (isCancelled()) return
+        setAllPets(cached)
+        setPets(getFilteredPets(cached, statusFilter).slice(0, 20))
+        setLoading(false)
+        isInitialLoad.current = false
+        return
       }
 
+      // 캐시 없으면 API 요청
+      const data = await fetchPets(1, 20, selectedRegion)
+      if (isCancelled()) return
+
+      setToCache(data, selectedRegion)
       setAllPets(data)
-      const filtered = getFilteredPets(data, statusFilter)
-      const sliced = filtered.slice(0, 20)
-      setPets(sliced)
+      setPets(getFilteredPets(data, statusFilter).slice(0, 20))
       setLoading(false)
       isInitialLoad.current = false
     }

@@ -19,6 +19,8 @@ import { toggleFavorite, getFavorites } from '../services/favoriteService'
 import { recordView } from '../services/recentlyViewedService'
 import { analyzePetPersonality } from '../services/aiService'
 import { optimizeImageUrl } from '../utils/imageUtils'
+import { findPetInAllCaches } from '../utils/petCache'
+import { fetchPets } from '../services/petService'
 
 const DetailPage = () => {
   const { id } = useParams<{ id: string }>()
@@ -46,26 +48,21 @@ const DetailPage = () => {
 
     const loadPet = async () => {
       try {
-        let found: Pet | undefined
+        // 1차: 모든 캐시(지역별 + 개별)에서 검색
+        let found: Pet | undefined = findPetInAllCaches(id)
 
-        // 1차: allPets 캐시에서 조회
-        const storedPets = localStorage.getItem('allPets')
-        if (storedPets) {
-          const pets: Pet[] = JSON.parse(storedPets)
-          found = pets.find((p) => p.id === id)
-        }
-
-        // 2차: 개별 pet 캐시에서 조회 (앞으로가기 등으로 allPets가 교체된 경우 대비)
+        // 2차: 캐시 미스 시 ID에서 SIGUN_CD 추출 후 API 조회
         if (!found) {
-          const cached = localStorage.getItem(`pet_cache_${id}`)
-          if (cached) {
-            found = JSON.parse(cached) as Pet
+          const sigunCd = id.split('-')[0]
+          if (sigunCd) {
+            const pets = await fetchPets(1, 300, undefined)
+            found = pets.find((p) => p.id === id)
           }
         }
 
         if (found) {
           setPet(found)
-          // 상세 페이지 방문 시 항상 개별 캐시 갱신 (MyPage 조회에서 사용)
+          // 개별 pet 캐시 갱신 (MyPage 조회에서 사용)
           localStorage.setItem(`pet_cache_${found.id}`, JSON.stringify(found))
           const favorites = await getFavorites()
           setIsFavoritedPet(favorites.includes(found.id))

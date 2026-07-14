@@ -211,7 +211,19 @@ const generateAdoptability = (): string => {
 }
 
 /**
+ * 배열을 청크로 나누는 헬퍼
+ */
+const chunkArray = <T>(arr: T[], size: number): T[][] => {
+  const chunks: T[][] = []
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size))
+  }
+  return chunks
+}
+
+/**
  * 지역별 유기동물 조회 (보호시설 → 동물 정보 두 단계 API 호출)
+ * 병렬 요청으로 성능 개선 (최대 5개 동시 요청)
  */
 export const fetchPets = async (
   _pageNo: number = 1,
@@ -223,30 +235,35 @@ export const fetchPets = async (
     const shelters = await fetchShelters(region)
 
     if (shelters.length === 0) {
-   
       return []
     }
 
-   
-
-    // Step 2: 각 보호시설의 시군 코드별로 동물 정보 조회
     // 중복되는 시군 코드는 한 번만 조회
     const shelterMap = new Map<string, any>()
     for (const shelter of shelters) {
       shelterMap.set(shelter.SIGUN_CD, shelter)
     }
 
+    const entries = Array.from(shelterMap.entries())
+
+    // 5개씩 묶어서 병렬 요청 (API 과부하 방지)
+    const CONCURRENCY = 5
+    const chunks = chunkArray(entries, CONCURRENCY)
     let allAnimals: Pet[] = []
 
-    for (const [sigunCd, shelterInfo] of shelterMap) {
-      const animals = await fetchAnimalsByRegion(sigunCd, shelterInfo)
-      allAnimals = allAnimals.concat(animals)
+    for (const chunk of chunks) {
+      const results = await Promise.allSettled(
+        chunk.map(([sigunCd, shelterInfo]) => fetchAnimalsByRegion(sigunCd, shelterInfo))
+      )
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          allAnimals = allAnimals.concat(result.value)
+        }
+      }
     }
 
-   
     return allAnimals
   } catch (error) {
-
     return []
   }
 }
