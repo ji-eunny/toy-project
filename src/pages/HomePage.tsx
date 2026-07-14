@@ -48,35 +48,35 @@ const HomePage = () => {
     const { signal } = abortControllerRef.current
 
     const loadPets = async () => {
-      setLoading(true)
-      setIsStreaming(false)
-      setDisplayCount(20)
-
-      // 캐시 확인 (지역별 + 만료 시간 30분)
+      // 캐시 확인 (지역별 + 만료 시간 적용)
       const cached = getFromCache(selectedRegion)
       if (cached) {
         if (signal.aborted) return
         setAllPets(cached)
         setPets(getFilteredPets(cached, statusFilterRef.current).slice(0, 20))
         setLoading(false)
+        setIsStreaming(false)
         return
       }
 
-      // 전체 조회: 스트리밍 방식 (배치마다 즉시 화면 표시)
+      setLoading(true)
+      setIsStreaming(false)
+      setDisplayCount(20)
+
+      // 전체 조회: 스트리밍 방식 (배치마다 즉시 화면 표시 + 캐시 저장)
       if (!selectedRegion) {
         setLoading(false)
         setIsStreaming(true)
 
-        const finalData = await fetchPetsStream((batchedPets) => {
+        await fetchPetsStream((batchedPets) => {
+          // 캐시는 abort 여부와 무관하게 항상 저장 (중간 이탈 시에도 다음 방문 즉시 로드)
+          setToCache(batchedPets, undefined)
           if (signal.aborted) return
           setAllPets(batchedPets)
           setPets(getFilteredPets(batchedPets, statusFilterRef.current).slice(0, displayCountRef.current))
         }, signal)
 
-        if (!signal.aborted) {
-          setIsStreaming(false)
-          setToCache(finalData, undefined)
-        }
+        setIsStreaming(false)
         return
       }
 
