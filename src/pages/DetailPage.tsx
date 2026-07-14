@@ -22,6 +22,28 @@ import { optimizeImageUrl } from '../utils/imageUtils'
 import { findPetInAllCaches } from '../utils/petCache'
 import { fetchPets } from '../services/petService'
 
+const ThumbnailImage = ({ src }: { src: string }) => {
+  const [error, setError] = useState(false)
+  if (!src || error) {
+    return (
+      <div className="w-full h-full bg-gray-100 flex flex-col items-center justify-center gap-0.5">
+        <p className="text-lg">🐾</p>
+        <p className="text-gray-400 text-xs">사진 없음</p>
+      </div>
+    )
+  }
+  return (
+    <img
+      src={optimizeImageUrl(src, 80, 80)}
+      alt=""
+      className="w-full h-full object-cover"
+      width={80}
+      height={80}
+      onError={() => setError(true)}
+    />
+  )
+}
+
 const DetailPage = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -206,12 +228,13 @@ const DetailPage = () => {
                       className="w-full h-full object-cover"
                       width={600}
                       height={480}
-                      onError={() => {
-                        setImageError(true)
-                      }}
+                      onError={() => setImageError(true)}
                     />
                   ) : (
-                    <p className="text-gray-400 text-lg font-semibold">No Image</p>
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <p className="text-6xl">🐾</p>
+                      <p className="text-gray-400 text-sm font-semibold">사진 없음</p>
+                    </div>
                   )}
 
                   {/* 상태 배지 */}
@@ -264,13 +287,7 @@ const DetailPage = () => {
                           currentImageIndex === idx ? 'border-primary' : 'border-gray-300'
                         }`}
                       >
-                        <img
-                          src={optimizeImageUrl(img, 80, 80)}
-                          alt=""
-                          className="w-full h-full object-cover"
-                          width={80}
-                          height={80}
-                        />
+                        <ThumbnailImage src={img} />
                       </button>
                     ))}
                   </div>

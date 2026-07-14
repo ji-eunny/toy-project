@@ -1,6 +1,6 @@
 import { Pet } from '../types/pet'
 
-const CACHE_TTL_MS = 30 * 60 * 1000 // 30분
+const REGION_CACHE_TTL_MS = 30 * 60 * 1000 // 지역별: 30분
 
 export const getCacheKey = (region?: string) => `pets_cache_${region ?? 'all'}`
 
@@ -9,7 +9,11 @@ export const getFromCache = (region?: string): Pet[] | null => {
     const raw = localStorage.getItem(getCacheKey(region))
     if (!raw) return null
     const { data, timestamp } = JSON.parse(raw)
-    if (Date.now() - timestamp > CACHE_TTL_MS) {
+
+    // 전체(region 없음)는 만료 없이 영구 캐시
+    if (!region) return data
+
+    if (Date.now() - timestamp > REGION_CACHE_TTL_MS) {
       localStorage.removeItem(getCacheKey(region))
       return null
     }
